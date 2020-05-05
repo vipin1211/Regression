@@ -1,0 +1,194 @@
+---
+title: "Dirt Bike Price Prediction"
+Method: "Multiple Regression"
+Author : "Vipin Amar Vivekanandan"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+
+# Libraries used for the Project
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggpubr)
+library(ggplot2)
+library(car)
+library(GGally)
+
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+
+# The Data Set is "Dirtbike_regression_multiple_csv"
+
+dat.bike<-read.csv("Dirtbike_regression_multiple_csv.csv", header = TRUE, stringsAsFactors = TRUE)
+attach(dat.bike) # Attaching dat.bike
+dat.bike.sel<-dat.bike[,c(2,3,4,5,6,10,11,14,28)]
+
+
+# PART 1:
+
+# Checking the Correlation between the variables.
+
+dat.bike.fd<-dat.bike[,c(1,2,4,5)]
+
+# Using Correlation method
+cor(dat.bike.fd[sapply(dat.bike.fd, is.numeric)])
+cor(dat.bike.sel[sapply(dat.bike.sel, is.numeric)])
+
+# Graph to explain replationships between dependent/independent.
+
+# Using Pairs function
+pairs(dat.bike.fd,main="Pairwise Relationship")
+
+# Checking with GGPAIRS function, Where we try to predict the impact of variables like Manufacturer, Displacement and Fuel capacity on the bike price.
+pm <- ggpairs(dat.bike.fd, mapping = aes(color = Manufacturer))
+pm
+
+# Graph to explain relationship between MSRP and Manufacturer
+ggplot(dat.bike,aes(x=Manufacturer,y=MSRP))+geom_boxplot()
+ggplot(dat.bike,aes((x=MSRP),color=as.factor(Manufacturer)))+geom_density()
+ggplot(dat.bike,aes((x=MSRP),color=as.factor(Manufacturer)))+geom_density()+facet_wrap(~Manufacturer)
+
+
+
+# From the above graphs we can see that the variables like Displacement and Fuel capacity have a significant impact on the bike price.
+
+# Also every Manufacturer has bikes in different Price(MSRP) ranges.
+
+# This observation makes the dataset suitable for Multiple Regression.
+
+```
+
+```{r}
+# PART 2:
+
+# Here we are checking Linear Regression for MSRP with few independent variables.
+# We use the maximum liklihood function to acheive this.
+
+#Linear regression - 1
+# Linear Regression with Manufacturer.
+bike_lin_reg<-lm(MSRP~Manufacturer, data=dat.bike) 
+summary(bike_lin_reg)
+
+# From the results we can see that the Multiple R-Squared is just 29.42%.
+
+# Linear Regression - 2
+# Linear Regression with Displacement.
+bike_lin_reg_dis<-lm(MSRP~Displacement, data=dat.bike)
+summary(bike_lin_reg_dis)
+plot(bike_lin_reg_dis)
+
+# From the results we can see that the Multiple R-Squared is 70.4%.
+
+# Checking the Normality of the residuals in Linear Regression
+ggqqplot(rstandard(bike_lin_reg_dis))
+qplot(rstandard(bike_lin_reg_dis))
+                                        
+ggplot(dat.bike, aes(x=Displacement,y=MSRP)) + geom_point() + geom_smooth(method="lm") 
+
+# We can see that there are a lot of outliers and the bike prices do not lie in the 95 % confidence interval
+
+plot(MSRP~Displacement, data=dat.bike)+
+abline(lm(MSRP~Displacement, data=dat.bike))
+# We can observe that when Displacement increases, MSRP increases
+
+# Linear Regression - 3
+# Linear Regression with Tank.
+bike_lr_t<-lm(MSRP~Tank, data=dat.bike)
+summary(bike_lr_t)
+plot(bike_lr_t)
+ggplot(dat.bike, aes(x=Tank,y=MSRP)) + geom_point() + geom_smooth(method="lm")
+```
+
+```{r cars}
+
+# PART 3:
+
+# The following Equation gives the Predictive Model for Multiple Regression.
+
+# MSRP=??0+ ??(Year)+ ??(Manufacturer)+ ??(Model)+ ??(Displacement)+ ??(Engine Type) + ??(Cooling) +??(Fuel System)+ ??(Ignition) + ??(Starting System)+ ??(Transmission)+ ??(Front Suspension)+ ??(Front Brake)+ ??(Rear Brake)+ ??(Front Tire)+ ??(Rear Tire)+ ??(Fuel Capacity)+ ??(Stroke)+ ??(Ratio)+ ??(Weight)+ ??(Tank)+ (error)
+
+
+# Multiple Regression - 1
+# Multiple Regression with Displacement and Tank
+
+bike_lr_d_t<-lm(MSRP~Displacement+Tank, data=dat.bike)
+summary(bike_lr_d_t)
+plot(bike_lr_d_t)
+vif(bike_lr_d_t)
+
+# We can see that the Adjusted - R^2 is 69.9%.
+# Which means Tank is not a good predictor of MSRP.
+
+# Multiple Regression - 2
+# Multiple Regression with Stroke and Weight
+
+bike_lr_s_w<-lm(MSRP~Stroke+Weight, data=dat.bike)
+summary(bike_lr_s_w)
+plot(bike_lr_s_w)
+vif(bike_lr_s_w)
+
+# The Adjusted  R^2 is only 48%. Which means this combination is a even bad predictor.
+
+
+# Multiple Regression - 3
+# Multiple Regression with Manufacturer and Engine Type.
+
+bike_mult_reg<-lm(MSRP~Manufacturer+Engine.Type, data=dat.bike)
+summary(bike_mult_reg)
+plot(bike_mult_reg)
+
+# the Adjusted - R^2 is 99.92%. Which means this combination of variables is a  better predictor.
+
+# Multiple Regression - 4
+# Adding Model, Starting System, Front Suspension
+
+bike_mult_reg<-lm(MSRP~Manufacturer+Model+Engine.Type+Starting.System+Front.Suspension, data=dat.bike) 
+summary(bike_mult_reg)
+plot(bike_mult_reg)
+
+# We can clearly see that adding the above varibles increased the Adjusted R^2 to 99.97% which shows that this combination can give a nearly perfect prediction.
+
+
+# Multiple Regression - 5
+# adding Transmission to the model
+
+bike_mult_reg<-lm(MSRP~Manufacturer+Model+Engine.Type+Starting.System+Front.Suspension+Transmission, data=dat.bike) 
+summary(bike_mult_reg)
+plot(bike_mult_reg, which=1)
+plot(bike_mult_reg, which=2)
+
+# Finally, the MSRP~Manufacturer+Model+Engine.Type+Starting.System+Front.Suspension+Transmission.This combination gives a Adjusted R^2 value of and which tells us that the price can be accurately predicted from this model.
+
+# Normality of the residuals in Multiple Regression
+ggqqplot(rstandard(bike_mult_reg))
+qplot(rstandard(bike_mult_reg))
+
+
+# Checking the Validity of our best model using Predict() Function
+
+newbike = data.frame(Manufacturer='Honda',Model='CRF110F',Engine.Type='Single cylinder four stroke, SOHC; two-valve',
+Starting.System='Electric',Front.Suspension='31.0 mm telescopic fork; 3.9 inches of travel',Transmission='Four speed with automatic clutch')
+predict(bike_mult_reg, newbike)
+
+# From above results, We can see that the actual bike price value is exactly matching with predicted bike price with the our best model.
+
+# PART 4:
+
+# CONCLUSION:
+# Finaly we can conclude that the Multiple Regression Model "MSRP~Manufacturer+Model+Engine.Type+Starting.System+Front.Suspension+Transmission" gives the Correct Price prediction.
+
+# THANK YOU
+
+```
+
